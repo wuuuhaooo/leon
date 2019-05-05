@@ -48,16 +48,19 @@ class Brain {
   /**
    * Make Leon talk
    */
-  talk (speech) {
+  talk (rawSpeech) {
     log.title('Leon')
     log.info('Talking...')
 
-    if (speech !== '') {
+    if (rawSpeech !== '') {
       if (process.env.LEON_TTS === 'true') {
+        // Stripe HTML
+        const speech = rawSpeech.replace(/<(?:.|\n)*?>/gm, '')
+
         this.tts.add(speech)
       }
 
-      this.socket.emit('answer', speech)
+      this.socket.emit('answer', rawSpeech)
     }
   }
 
@@ -118,6 +121,7 @@ class Brain {
             lang: langs[process.env.LEON_LANG].short,
             package: obj.classification.package,
             module: obj.classification.module,
+            action: obj.classification.action,
             query: obj.query,
             entities: obj.entities
           }
@@ -162,7 +166,7 @@ class Brain {
           this.socket.emit('is-typing', false)
 
           log.title(packageName)
-          reject({ type: 'error', obj: data })
+          reject({ type: 'error', obj: new Error(data) })
         })
 
         // Catch the end of the module execution

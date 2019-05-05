@@ -6,16 +6,17 @@ from os import path, environ
 from pathlib import Path
 from random import choice
 from sys import argv, stdout
-from re import findall
 from vars import useragent
 from tinydb import TinyDB, Query, operations
 from time import sleep
 import sqlite3
 import requests
+import re
 
 dirname = path.dirname(path.realpath(__file__))
 
 queryobjectpath = argv[1]
+codes = []
 
 serversrc = 'dist' if environ.get('LEON_NODE_ENV') == 'production' else 'src'
 queryobjfile = open(queryobjectpath, 'r', encoding = 'utf8')
@@ -49,21 +50,24 @@ def translate(key, d = { }):
 
 	# "Temporize" for the data buffer ouput on the core
 	sleep(0.1)
-				
+
 	return output
 
 def output(type, code, speech = ''):
 	"""Communicate with the Core"""
 
+	codes.append(code)
+
 	print(dumps({
 		'package': queryobj['package'],
 		'module': queryobj['module'],
+		'action': queryobj['action'],
 		'lang': queryobj['lang'],
 		'input': queryobj['query'],
 		'entities': queryobj['entities'],
 		'output': {
 			'type': type,
-			'code': code,
+			'codes': codes,
 			'speech': speech,
 			'options': config('options')
 		}
@@ -72,11 +76,14 @@ def output(type, code, speech = ''):
 	if (type == 'inter'):
 		stdout.flush()
 
-def http(method, url):
+def http(method, url, headers = None):
 	"""Send HTTP request with the Leon user agent"""
 
 	session = requests.Session()
 	session.headers.update({ 'User-Agent': useragent, 'Cache-Control': 'no-cache' })
+
+	if headers != None:
+	  session.headers.update(headers)
 
 	return session.request(method, url)
 
@@ -111,4 +118,3 @@ def db(dbtype = 'tinydb'):
 	if dbtype == 'tinydb':
 		db = TinyDB(dirname + '/../../packages/' + queryobj['package'] + '/data/db/' + queryobj['package'] + '.json')
 		return { 'db': db, 'query': Query, 'operations': operations }
-
